@@ -12,7 +12,7 @@ from sentence_transformers.models.Module import Module
 
 class LateInteractionPooling(Module):
     """
-    Pooling layer that preserves token-level embeddings for late interaction models.
+    Pooling layer that preserves token-level embeddings for multi-vector encoder models.
 
     Unlike standard Pooling which collapses token embeddings into a single sentence embedding,
     LateInteractionPooling keeps all token embeddings but optionally:
@@ -20,7 +20,7 @@ class LateInteractionPooling(Module):
     - Masks out special tokens ([CLS], [SEP], [PAD])
     - Applies L2 normalization per token
 
-    This is used for late interaction models where the similarity between
+    This is used for multi-vector encoder models where the similarity between
     a query and document is computed via MaxSim over token embeddings.
 
     Args:
@@ -34,7 +34,7 @@ class LateInteractionPooling(Module):
     Example:
         ::
 
-            from sentence_transformers.late_interaction.models import LateInteractionPooling
+            from sentence_transformers.multi_vec_encoder.models import LateInteractionPooling
 
             # Create a late interaction pooling layer
             pooling = LateInteractionPooling(
@@ -148,7 +148,7 @@ class LateInteractionPooling(Module):
         """
         Returns None since this module produces token-level embeddings, not a single sentence embedding.
 
-        For late interaction models, embeddings are multi-vector (one per token), not single-vector.
+        For multi-vector encoder models, embeddings are multi-vector (one per token), not single-vector.
         """
         return None
 
