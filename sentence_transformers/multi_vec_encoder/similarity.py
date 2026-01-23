@@ -37,31 +37,24 @@ def maxsim(
     batch_d, num_doc_tokens, _ = document_embeddings.shape
 
     # Compute token-level similarity: [batch_q, batch_d, num_query_tokens, num_doc_tokens]
-    # Using einsum for efficient batched matrix multiplication
-    # query: [batch_q, num_query_tokens, dim] (a, i, k)
-    # doc: [batch_d, num_doc_tokens, dim] (b, j, k)
-    # result: [batch_q, batch_d, num_query_tokens, num_doc_tokens] (a, b, i, j)
     token_similarities = torch.einsum("aik,bjk->abij", query_embeddings, document_embeddings)
     # Reshape to [batch_q, num_query_tokens, batch_d, num_doc_tokens]
     token_similarities = token_similarities.permute(0, 2, 1, 3)
 
     # Apply document mask: set similarities with padding tokens to -inf
     if document_mask is not None:
-        # document_mask: [batch_d, num_doc_tokens] -> [1, 1, batch_d, num_doc_tokens]
         doc_mask_expanded = document_mask.unsqueeze(0).unsqueeze(0)
         token_similarities = token_similarities.masked_fill(doc_mask_expanded == 0, float("-inf"))
 
     # For each query token, find max similarity to any document token
-    # [batch_q, num_query_tokens, batch_d, num_doc_tokens] -> [batch_q, num_query_tokens, batch_d]
     max_similarities = token_similarities.max(dim=-1).values
 
     # Apply query mask: set masked query tokens to 0 before summing
     if query_mask is not None:
-        # query_mask: [batch_q, num_query_tokens] -> [batch_q, num_query_tokens, 1]
         query_mask_expanded = query_mask.unsqueeze(-1)
         max_similarities = max_similarities * query_mask_expanded
 
-    # Sum over query tokens: [batch_q, num_query_tokens, batch_d] -> [batch_q, batch_d]
+    # Sum over query tokens
     scores = max_similarities.sum(dim=1)
 
     return scores
@@ -98,25 +91,21 @@ def maxsim_pairwise(
     )
 
     # Compute token-level similarity for each pair: [batch, num_query_tokens, num_doc_tokens]
-    # query: [batch, num_query_tokens, dim]
-    # doc: [batch, num_doc_tokens, dim]
     token_similarities = torch.bmm(query_embeddings, document_embeddings.transpose(1, 2))
 
     # Apply document mask: set similarities with padding tokens to -inf
     if document_mask is not None:
-        # document_mask: [batch, num_doc_tokens] -> [batch, 1, num_doc_tokens]
         doc_mask_expanded = document_mask.unsqueeze(1)
         token_similarities = token_similarities.masked_fill(doc_mask_expanded == 0, float("-inf"))
 
     # For each query token, find max similarity to any document token
-    # [batch, num_query_tokens, num_doc_tokens] -> [batch, num_query_tokens]
     max_similarities = token_similarities.max(dim=-1).values
 
     # Apply query mask: set masked query tokens to 0 before summing
     if query_mask is not None:
         max_similarities = max_similarities * query_mask
 
-    # Sum over query tokens: [batch, num_query_tokens] -> [batch]
+    # Sum over query tokens
     scores = max_similarities.sum(dim=1)
 
     return scores

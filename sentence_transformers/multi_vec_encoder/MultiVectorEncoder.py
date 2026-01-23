@@ -45,29 +45,6 @@ class MultiVectorEncoder(SentenceTransformer):
         tokenizer_kwargs: Additional tokenizer configuration parameters.
         config_kwargs: Additional model configuration parameters.
         backend: The backend to use for inference ("torch", "onnx", or "openvino").
-
-    Example:
-        ::
-
-            from sentence_transformers import MultiVectorEncoder
-
-            # Load or create a multi-vector encoder model
-            model = MultiVectorEncoder("bert-base-uncased")
-
-            # Encode queries and documents
-            queries = ["What is the capital of France?"]
-            documents = [
-                "Paris is the capital and largest city of France.",
-                "London is the capital of England.",
-            ]
-
-            query_embeddings = model.encode_query(queries)
-            document_embeddings = model.encode_document(documents)
-
-            # Compute MaxSim similarity
-            scores = model.similarity(query_embeddings, document_embeddings)
-            print(scores)
-            # tensor([[3.2145, 1.8732]])  # Paris document scores higher
     """
 
     def __init__(
@@ -284,14 +261,6 @@ class MultiVectorEncoder(SentenceTransformer):
 
         Returns:
             Similarity scores with shape [batch_q, batch_d].
-
-        Example:
-            ::
-
-                query_embs = model.encode_query(["What is AI?"])
-                doc_embs = model.encode_document(["AI is artificial intelligence.", "Dogs are pets."])
-                scores = model.similarity(query_embs, doc_embs)
-                # tensor([[2.5, 0.8]])  # AI document scores higher
         """
         # Convert lists to padded tensors with masks
         query_embs, query_mask = self._prepare_embeddings_for_similarity(query_embeddings)
@@ -384,20 +353,6 @@ class MultiVectorEncoder(SentenceTransformer):
                 - "corpus_id": Index of the document
                 - "score": MaxSim similarity score
                 - "text": Document text (if return_documents=True)
-
-        Example:
-            ::
-
-                results = model.rank(
-                    query="What is machine learning?",
-                    documents=[
-                        "Machine learning is a subset of AI.",
-                        "The weather is nice today.",
-                        "Deep learning uses neural networks.",
-                    ],
-                    top_k=2,
-                )
-                # [{"corpus_id": 0, "score": 3.2}, {"corpus_id": 2, "score": 2.8}]
         """
         # Encode query and documents
         query_embedding = self.encode_query(

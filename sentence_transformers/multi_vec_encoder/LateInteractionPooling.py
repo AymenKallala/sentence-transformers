@@ -30,28 +30,6 @@ class LateInteractionPooling(Module):
         normalize: Whether to L2-normalize each token embedding. Default: True.
         skip_cls_token: Whether to exclude the [CLS] token from the output. Default: False.
         skip_sep_token: Whether to exclude the [SEP] token from the output. Default: False.
-
-    Example:
-        ::
-
-            from sentence_transformers.multi_vec_encoder.models import LateInteractionPooling
-
-            # Create a late interaction pooling layer
-            pooling = LateInteractionPooling(
-                word_embedding_dimension=768,
-                output_dimension=128,
-                normalize=True,
-            )
-
-            # Input features from transformer
-            features = {
-                "token_embeddings": torch.randn(2, 32, 768),  # [batch, seq_len, hidden_dim]
-                "attention_mask": torch.ones(2, 32),  # [batch, seq_len]
-            }
-
-            # Output preserves token dimension
-            output = pooling(features)
-            print(output["token_embeddings"].shape)  # [2, 32, 128]
     """
 
     config_keys = [
