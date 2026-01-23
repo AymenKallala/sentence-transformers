@@ -32,6 +32,7 @@ from sentence_transformers.sparse_encoder import (
     SparseEncoderTrainer,
     SparseEncoderTrainingArguments,
 )
+from sentence_transformers.multi_vec_encoder import MultiVectorEncoder
 from sentence_transformers.trainer import SentenceTransformerTrainer
 from sentence_transformers.training_args import SentenceTransformerTrainingArguments
 from sentence_transformers.util import mine_hard_negatives
@@ -62,6 +63,7 @@ __all__ = [
     "SparseEncoderTrainer",
     "SparseEncoderTrainingArguments",
     "SparseEncoderModelCardData",
+    "MultiVectorEncoder",
     "quantize_embeddings",
     "export_optimized_onnx_model",
     "export_dynamic_quantized_onnx_model",
