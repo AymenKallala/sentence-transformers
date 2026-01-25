@@ -7,6 +7,7 @@ from typing import Any, Literal
 import numpy as np
 import torch
 from torch import Tensor, nn
+from torch.nn.utils.rnn import pad_sequence
 
 from sentence_transformers.models import Transformer
 from sentence_transformers.multi_vec_encoder import LateInteractionPooling
@@ -261,7 +262,6 @@ class MultiVectorEncoder(SentenceTransformer):
         Returns:
             Similarity scores with shape [batch_q, batch_d].
         """
-        # Convert lists to padded tensors with masks
         query_embs, query_mask = self._prepare_embeddings_for_similarity(query_embeddings)
         doc_embs, doc_mask = self._prepare_embeddings_for_similarity(document_embeddings)
 
@@ -288,40 +288,55 @@ class MultiVectorEncoder(SentenceTransformer):
         return maxsim_pairwise(query_embs, doc_embs, query_mask, doc_mask)
 
     def _prepare_embeddings_for_similarity(
-        self, embeddings: list[np.ndarray] | list[Tensor] | Tensor
+        self,
+        embeddings: list[np.ndarray] | list[Tensor] | Tensor,
     ) -> tuple[Tensor, Tensor]:
         """
         Convert embeddings to padded tensor format with attention mask.
 
         Args:
-            embeddings: Either a list of variable-length embeddings or a padded tensor.
+            embeddings: Either a list of variable-length embeddings with shape [num_tokens, dim] each,
+                or a pre-padded tensor with shape [batch, max_tokens, dim].
 
         Returns:
             Tuple of (padded_embeddings, attention_mask).
+
+        Raises:
+            ValueError: If embeddings is empty or has inconsistent dimensions.
         """
+        # Handle pre-padded tensor input
         if isinstance(embeddings, Tensor):
-            # Already a tensor, assume it's padded
             mask = torch.ones(embeddings.shape[:-1], device=embeddings.device, dtype=torch.long)
             return embeddings, mask
 
-        # Convert list of embeddings to padded tensor
+        # Validate non-empty list
+        if len(embeddings) == 0:
+            raise ValueError("embeddings list cannot be empty")
+
+        # Convert numpy arrays to tensors
         if isinstance(embeddings[0], np.ndarray):
             embeddings = [torch.from_numpy(e) for e in embeddings]
 
-        # Find max length and dimension
-        max_len = max(e.shape[0] for e in embeddings)
-        dim = embeddings[0].shape[1]
-        batch_size = len(embeddings)
-
-        # Create padded tensor and mask
-        device = embeddings[0].device if embeddings[0].is_cuda else "cpu"
-        padded = torch.zeros(batch_size, max_len, dim, device=device, dtype=embeddings[0].dtype)
-        mask = torch.zeros(batch_size, max_len, device=device, dtype=torch.long)
-
+        # Validate all elements are tensors and have consistent dimensions, collect lengths
+        dim = embeddings[0].shape[-1]
+        lengths = []
         for i, emb in enumerate(embeddings):
-            length = emb.shape[0]
-            padded[i, :length] = emb
-            mask[i, :length] = 1
+            if not isinstance(emb, Tensor):
+                raise ValueError(f"Expected Tensor at index {i}, got {type(emb).__name__}")
+            if emb.ndim != 2:
+                raise ValueError(f"Expected 2D tensor [num_tokens, dim] at index {i}, got shape {emb.shape}")
+            if emb.shape[-1] != dim:
+                raise ValueError(f"Inconsistent embedding dimension at index {i}: expected {dim}, got {emb.shape[-1]}")
+            lengths.append(emb.shape[0])
+
+        # Padding
+        padded = pad_sequence(embeddings, batch_first=True, padding_value=0.0)
+
+        # Mask creation
+        device = embeddings[0].device
+        lengths_tensor = torch.tensor(lengths, device=device).unsqueeze(1)  # [batch_size, 1]
+        positions = torch.arange(padded.shape[1], device=device).unsqueeze(0)  # [1, max_len]
+        mask = (positions < lengths_tensor).long()
 
         return padded, mask
 
